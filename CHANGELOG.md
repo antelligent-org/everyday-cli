@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.7] - 2026-08-03
+
+### 🐛 Fixed
+
+- **Realtime WebSocket connections failing with `1008 Server Error`** - Downgraded `appwrite` dependency from `^26.0.0` to `^24.2.0`
+  - `appwrite@25.0.0` changed the realtime protocol: channels are now sent as a message after the socket connects, instead of as `channels[]` query params on the WebSocket URL
+  - Backends that only implement the older URL-based protocol (e.g. `provider.everydayseries.ai`) reject the new protocol immediately with a `1008` policy-violation close, before any `subscribe` message can be sent
+  - `^24.2.0` is the last version using the URL-based protocol; verified directly against the affected backend that this restores working `client.subscribe()` connections
+  - No public API changes — this only affects the realtime transport internals
+
 ## [2.0.6] - 2026-06-27
 
 ### 🚀 Server-Side Account Service
