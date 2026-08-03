@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { EsClient } from './client';
-import type { NodeType } from './types';
+import { EsClient } from './client.js';
+import type { NodeType } from './types.js';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -11,7 +11,7 @@ async function main() {
     // Delegate to schema CLI
     // Remove 'schema' from argv before passing to schema CLI
     const schemaArgs = [process.argv[0], 'everyday-cli schema', ...args.slice(1)];
-    const { program } = await import('./schema/cli');
+    const { program } = await import('./schema/cli.js');
     program.parse(schemaArgs);
     return;
   }

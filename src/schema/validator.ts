@@ -15,7 +15,7 @@ import {
   IndexDefinition,
   BucketDefinition,
   AttributeType
-} from './types';
+} from './types.js';
 
 /**
  * Validate a complete schema definition

@@ -12,12 +12,12 @@
  */
 
 // Re-export server implementation as default (backwards compatibility)
-export { EsDbClient } from './server/dbClient';
-export type { EsDbClientConfigServer as EsDbClientConfig } from './server/dbClient';
+export { EsDbClient } from './server/dbClient.js';
+export type { EsDbClientConfigServer as EsDbClientConfig } from './server/dbClient.js';
 
 // Export flow execution client
-export { EsClient } from './client';
-export type { EsClientConfig } from './types';
+export { EsClient } from './client.js';
+export type { EsClientConfig } from './types.js';
 
 // Export universal helpers
 export {
@@ -28,7 +28,7 @@ export {
   type EsQueryString,
   type EsPermissionString,
   type EsRoleString
-} from './helpers';
+} from './helpers/index.js';
 
 // Export types
 export type {
@@ -49,4 +49,4 @@ export type {
   MultiValueTypes,
   ModelInputType,
   SourceTarget
-} from './types';
+} from './types.js';

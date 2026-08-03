@@ -6,8 +6,8 @@
  */
 
 // Export the client implementation
-export { EsDbClient } from './dbClient';
-export type { EsDbClientConfigBrowser, OAuthProvider } from './dbClient';
+export { EsDbClient } from './dbClient.js';
+export type { EsDbClientConfigBrowser, OAuthProvider } from './dbClient.js';
 
 // Export universal helpers (work in both server and client)
 export {
@@ -18,7 +18,7 @@ export {
   type EsQueryString,
   type EsPermissionString,
   type EsRoleString
-} from '../helpers';
+} from '../helpers/index.js';
 
 // Export shared types
 export type {
@@ -38,6 +38,6 @@ export type {
   RealtimeCallback,
   RealtimeResponseEvent,
   UnsubscribeFunction
-} from '../types';
+} from '../types.js';
 
 // Note: EsClient (flow execution) not exported here - only works server-side

@@ -26,9 +26,9 @@ import {
   getSchemaPath,
   updateMetadata,
   readMetadata
-} from './parser';
-import { validateSchema } from './validator';
-import { SchemaManager } from './manager';
+} from './parser.js';
+import { validateSchema } from './validator.js';
+import { SchemaManager } from './manager.js';
 
 const program = new Command();
 
@@ -458,6 +458,6 @@ program
 export { program };
 
 // If run directly, parse and execute
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   program.parse(process.argv);
 }

@@ -15,7 +15,7 @@ import {
   SchemaOperation,
   SchemaPullResult,
   SchemaDiff
-} from './types';
+} from './types.js';
 
 export interface SchemaManagerConfig {
   endpoint: string;

@@ -43,7 +43,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run build:clean && npm run build:server && npm run build:client",
+    "build": "npm run build:clean && npm run build:server && npm run build:client && chmod +x dist/cli.js",
     "build:clean": "rm -rf dist",
     "build:server": "tsc --project tsconfig.server.json",
     "build:client": "tsc --project tsconfig.client.json",

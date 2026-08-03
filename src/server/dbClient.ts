@@ -5,8 +5,8 @@
  */
 
 import { Client, Databases, Users, Query, Storage, Account } from 'node-appwrite';
-import { EsDbClientBase, DEFAULT_PROVIDER_URL } from '../shared/base';
-import { EsID, type EsPermissionString, type EsQueryString } from '../helpers';
+import { EsDbClientBase, DEFAULT_PROVIDER_URL } from '../shared/base.js';
+import { EsID, type EsPermissionString, type EsQueryString } from '../helpers/index.js';
 import type {
   EsRecord,
   EsRecordSet,
@@ -16,7 +16,7 @@ import type {
   EsAssetSet,
   EsQueryConfig,
   EsAccountPreferences
-} from '../types';
+} from '../types.js';
 
 /**
  * Server-side configuration (requires API key)

@@ -11,8 +11,8 @@ import type {
   EsAsset,
   EsAssetSet,
   EsQueryConfig
-} from '../types';
-import type { EsPermissionString, EsQueryString } from '../helpers';
+} from '../types.js';
+import type { EsPermissionString, EsQueryString } from '../helpers/index.js';
 
 export const DEFAULT_PROVIDER_URL = 'https://provider.everydayseries.ai/v1';
 

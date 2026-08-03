@@ -1,4 +1,4 @@
-import type { EsClientConfig, FlowNode, FlowResponse, RunFlowResult, FlowValue, NodeType } from './types';
+import type { EsClientConfig, FlowNode, FlowResponse, RunFlowResult, FlowValue, NodeType } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://app.everydayseries.ai';
 

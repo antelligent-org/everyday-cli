@@ -10,7 +10,7 @@ import type {
   EsAssetSet,
   EsMembership,
   EsMembershipSet
-} from './types';
+} from './types.js';
 
 const DEFAULT_PROVIDER_URL = 'https://provider.everydayseries.ai/v1';
 

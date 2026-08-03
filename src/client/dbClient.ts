@@ -5,8 +5,8 @@
  */
 
 import { Client, Databases, Account, Query, Storage, Teams } from 'appwrite';
-import { EsDbClientBase, DEFAULT_PROVIDER_URL } from '../shared/base';
-import { EsID, type EsPermissionString, type EsQueryString } from '../helpers';
+import { EsDbClientBase, DEFAULT_PROVIDER_URL } from '../shared/base.js';
+import { EsID, type EsPermissionString, type EsQueryString } from '../helpers/index.js';
 import type {
   EsRecord,
   EsRecordSet,
@@ -23,7 +23,7 @@ import type {
   EsTeamPreferences,
   RealtimeCallback,
   UnsubscribeFunction
-} from '../types';
+} from '../types.js';
 
 /**
  * Client-side configuration (NO API key - uses session auth)

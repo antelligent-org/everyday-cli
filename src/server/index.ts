@@ -6,8 +6,8 @@
  */
 
 // Export the server implementation
-export { EsDbClient } from './dbClient';
-export type { EsDbClientConfigServer } from './dbClient';
+export { EsDbClient } from './dbClient.js';
+export type { EsDbClientConfigServer } from './dbClient.js';
 
 // Export universal helpers (work in both server and client)
 export {
@@ -18,7 +18,7 @@ export {
   type EsQueryString,
   type EsPermissionString,
   type EsRoleString
-} from '../helpers';
+} from '../helpers/index.js';
 
 // Export shared types
 export type {
@@ -30,8 +30,8 @@ export type {
   EsAssetSet,
   EsQueryConfig,
   EsAccountPreferences
-} from '../types';
+} from '../types.js';
 
 // Also export the EsClient for flow execution (if needed)
-export { EsClient } from '../client';
-export type { EsClientConfig } from '../types';
+export { EsClient } from '../client.js';
+export type { EsClientConfig } from '../types.js';

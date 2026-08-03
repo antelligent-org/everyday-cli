@@ -6,7 +6,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { SchemaDefinition, SchemaMetadata } from './types';
+import { SchemaDefinition, SchemaMetadata } from './types.js';
 
 const SCHEMA_FILENAME = 'schema.json';
 const METADATA_FILENAME = '.schema-metadata.json';
