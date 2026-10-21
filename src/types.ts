@@ -262,6 +262,8 @@ export interface EsAccount {
   phoneConfirmed: boolean;
   createdAt: string;
   modifiedAt: string;
+  /** Labels set on the account by an admin (e.g. "admin"). Server-side reads only. */
+  labels?: string[];
 }
 
 export interface EsAccountSet {
@@ -278,6 +280,12 @@ export interface EsMembership {
   teamName: string;
   roles: string[];
   createdAt: string;
+  /** When the invitation was sent. */
+  invited?: string;
+  /** When the invitation was accepted (empty while pending). */
+  joined?: string;
+  /** Whether the invitation has been accepted. */
+  confirm?: boolean;
 }
 
 export interface EsMembershipSet {
