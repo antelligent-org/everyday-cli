@@ -101,7 +101,7 @@ export class EsDbClient extends EsDbClientBase {
         failure
       );
     } catch (error) {
-      throw esError('Failed to login with ${provider}', error);
+      throw esError(`Failed to login with ${provider}`, error);
     }
   }
 
