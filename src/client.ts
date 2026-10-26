@@ -1,27 +1,57 @@
-import type { EsClientConfig, FlowNode, FlowResponse, RunFlowResult, FlowValue, NodeType } from './types';
+import type { EsClientConfig, FlowNode, FlowResponse, RunFlowResult, FlowValue, NodeType, RunOptions } from './types';
 
 const DEFAULT_BASE_URL = 'https://app.everydayseries.ai';
+
+/** How long run() waits for the server by default: a series can take a while. */
+const DEFAULT_TIMEOUT_MS = 120_000;
+
+/** Why a run that answered `complete: false` stopped, in one line. */
+function stoppedReason(json: { nodes?: FlowNode[]; checkoutRequiredFor?: string; dependenciesNode?: FlowNode | null } | undefined): string {
+  const waiting = json?.dependenciesNode;
+  if (json?.checkoutRequiredFor || waiting?.data?.checkoutRequired) {
+    return `The run is waiting for approval${waiting?.data?.label ? ` at "${waiting.data.label}"` : ''}.`;
+  }
+  const failed = (json?.nodes || []).find(
+    node => typeof node.data?.value === 'string' && /^error\b/i.test(node.data.value.trim())
+  );
+  if (failed) return `The run stopped at "${failed.data?.label ?? failed.id}": ${failed.data.value}`;
+  return 'The run stopped before the end.';
+}
 
 export class EsClient {
   private apiKey: string; 
   private baseUrl: string;
   private slug: string;
+  private timeoutMs: number;
 
   constructor(config: EsClientConfig) {
     this.apiKey = config.apiKey;
     this.baseUrl = (config.baseUrl || DEFAULT_BASE_URL) + '/api/trpc';
     this.slug = config.slug ;
+    this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   /**
    * Run a flow by ID with given parameters
    * @param id - Flow ID string
    * @param value - Flow value key-value object where all values are strings
+   * @param options - `timeoutMs` (default: the client's, 120000) and/or an
+   *   AbortSignal to cancel the request
+   *
+   * `success` is true only when the run reached the end. A run that stopped
+   * at an approval or a failed step returns `success: false`, `complete:
+   * false` and says why in `error`; `hisId` names the run either way.
    */
-  async run(id: string, value: FlowValue): Promise<RunFlowResult> {
+  async run(id: string, value: FlowValue, options: RunOptions = {}): Promise<RunFlowResult> {
+    const timeoutMs = options.timeoutMs ?? this.timeoutMs;
+    const timeout = new AbortController();
+    const timer = setTimeout(() => timeout.abort(), timeoutMs);
+    const onAbort = () => timeout.abort();
+    options.signal?.addEventListener('abort', onAbort);
     try {
+      if (options.signal?.aborted) timeout.abort();
       const url = `${this.baseUrl}/flows.runFlowById`;
-      const options = {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34,28 +64,49 @@ export class EsClient {
             slug: this.slug,
           },
         }),
-      };
+        signal: timeout.signal,
+      });
 
-      const response = await fetch(url, options);
-
+      const body: any = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        // The server's own reason ("Insufficient AI credits...", "The inputs
+        // provided don't match..."), not only the status.
+        const message = body?.error?.json?.message ?? body?.error?.message;
+        return {
+          success: false,
+          nodes: [],
+          status: response.status,
+          error: message ? String(message) : `API request failed with status ${response.status}`,
+        };
       }
 
-      const data: FlowResponse = await response.json();
-      const nodes = data?.result?.data?.json?.nodes || [];
-
+      const json = (body as FlowResponse | null)?.result?.data?.json;
+      const nodes = json?.nodes || [];
+      const complete = json?.complete !== false;
       return {
-        success: true,
+        success: complete,
+        complete,
+        hisId: json?.hisId,
         nodes,
         data: nodes.map(node => node.data),
+        ...(complete ? {} : {error: stoppedReason(json)}),
       };
     } catch (error) {
+      const aborted = error instanceof Error && error.name === 'AbortError';
       return {
         success: false,
         nodes: [],
-        error: error instanceof Error ? error.message : 'Failed to run flow',
+        error: aborted
+          ? options.signal?.aborted
+            ? 'The request was cancelled'
+            : `No answer within ${timeoutMs} ms`
+          : error instanceof Error
+          ? error.message
+          : 'Failed to run flow',
       };
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener('abort', onAbort);
     }
   }
 
