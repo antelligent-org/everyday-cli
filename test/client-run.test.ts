@@ -83,3 +83,43 @@ describe('EsClient.run', () => {
     expect(await pending).toMatchObject({ success: false, error: 'The request was cancelled' });
   });
 });
+
+describe('EsClient.findFlowByName', () => {
+  const realFetch = global.fetch;
+  let fetchMock: jest.Mock;
+  beforeEach(() => {
+    fetchMock = jest.fn();
+    (global as any).fetch = fetchMock;
+  });
+  afterAll(() => {
+    (global as any).fetch = realFetch;
+  });
+  const client = () => new EsClient({ apiKey: 'k', slug: 'team-a', baseUrl: 'https://es.test' });
+  const page = (flows: unknown[]) => ({ ok: true, status: 200, json: async () => ({ result: { data: { json: flows } } }) });
+
+  it('finds a flow by exact name, ignoring case and spaces', async () => {
+    fetchMock.mockResolvedValue(page([{ id: 'a', name: 'Create proposal v2' }, { id: 'b', name: 'Create Proposal' }]));
+    expect(await client().findFlowByName('  create proposal ')).toEqual({ id: 'b', name: 'Create Proposal' });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('https://es.test/api/trpc/flows.get?input=');
+    expect(JSON.parse(decodeURIComponent(url.split('input=')[1]))).toEqual({ json: { limit: 100, offset: 0, slug: 'team-a' } });
+    expect(init.headers.Authorization).toBe('Bearer k');
+  });
+
+  it('pages until it finds it', async () => {
+    const full = Array.from({ length: 100 }, (_, i) => ({ id: `x${i}`, name: `Flow ${i}` }));
+    fetchMock.mockResolvedValueOnce(page(full)).mockResolvedValueOnce(page([{ id: 'z', name: 'Late' }]));
+    expect(await client().findFlowByName('Late')).toEqual({ id: 'z', name: 'Late' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns null when no flow has that name', async () => {
+    fetchMock.mockResolvedValue(page([{ id: 'a', name: 'Other' }]));
+    expect(await client().findFlowByName('Missing')).toBeNull();
+  });
+
+  it("throws the server's message when the list can't be read", async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 401, json: async () => ({ error: { json: { message: 'Invalid API key' } } }) });
+    await expect(client().findFlowByName('x')).rejects.toThrow('Invalid API key');
+  });
+});

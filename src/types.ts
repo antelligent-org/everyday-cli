@@ -6,6 +6,16 @@ export interface EsClientConfig {
   timeoutMs?: number;
 }
 
+/** A flow (series) as the team's flow list returns it. */
+export interface FlowSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+  slug?: string | null;
+  status?: string | null;
+  [key: string]: any;
+}
+
 export interface RunOptions {
   /** Overrides the client's timeoutMs for this call. */
   timeoutMs?: number;

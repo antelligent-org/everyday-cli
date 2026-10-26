@@ -45,6 +45,7 @@ export type {
   FlowResponse,
   RunFlowResult,
   RunOptions,
+  FlowSummary,
   FlowValue,
   NodeError,
   MultiValueTypes,
