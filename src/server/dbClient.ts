@@ -4,8 +4,8 @@
  * Uses node-appwrite SDK for server-side database operations with API key authentication
  */
 
-import { Client, Databases, Users, Query, Storage, Account } from 'node-appwrite';
-import { EsDbClientBase, DEFAULT_PROVIDER_URL } from '../shared/base';
+import { Client, Databases, Users, Query, Storage, Account, Teams } from 'node-appwrite';
+import { EsDbClientBase, DEFAULT_PROVIDER_URL, esError } from '../shared/base';
 import { EsID, type EsPermissionString, type EsQueryString } from '../helpers';
 import type {
   EsRecord,
@@ -15,7 +15,9 @@ import type {
   EsAsset,
   EsAssetSet,
   EsQueryConfig,
-  EsAccountPreferences
+  EsAccountPreferences,
+  EsMembership,
+  EsMembershipSet
 } from '../types';
 
 /**
@@ -40,6 +42,8 @@ export class EsDbClient extends EsDbClientBase {
   private users: Users;
   private storage: Storage;
   private account: Account;
+  private teams: Teams;
+  private config: EsDbClientConfigServer;
 
   constructor(config: EsDbClientConfigServer) {
     super(config);
@@ -55,6 +59,8 @@ export class EsDbClient extends EsDbClientBase {
     this.users = new Users(this.client);
     this.storage = new Storage(this.client);
     this.account = new Account(this.client);
+    this.teams = new Teams(this.client);
+    this.config = config;
   }
 
   // ==================== RECORD OPERATIONS ====================
@@ -76,7 +82,7 @@ export class EsDbClient extends EsDbClientBase {
       );
       return this.mapRecord(doc);
     } catch (error) {
-      throw new Error(`Failed to add record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to add record', error);
     }
   }
 
@@ -89,7 +95,7 @@ export class EsDbClient extends EsDbClientBase {
       const doc = await this.databases.getDocument(storeId, tableId, recordId);
       return this.mapRecord(doc);
     } catch (error) {
-      throw new Error(`Failed to fetch record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to fetch record', error);
     }
   }
 
@@ -110,7 +116,7 @@ export class EsDbClient extends EsDbClientBase {
       );
       return this.mapRecord(doc);
     } catch (error) {
-      throw new Error(`Failed to modify record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to modify record', error);
     }
   }
 
@@ -123,7 +129,7 @@ export class EsDbClient extends EsDbClientBase {
       await this.databases.deleteDocument(storeId, tableId, recordId);
       return true;
     } catch (error) {
-      throw new Error(`Failed to remove record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to remove record', error);
     }
   }
 
@@ -145,7 +151,7 @@ export class EsDbClient extends EsDbClientBase {
         items: response.documents.map(doc => this.mapRecord(doc))
       };
     } catch (error) {
-      throw new Error(`Failed to fetch records: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to fetch records', error);
     }
   }
 
@@ -166,7 +172,7 @@ export class EsDbClient extends EsDbClientBase {
         items: response.documents.map(doc => this.mapRecord(doc))
       };
     } catch (error) {
-      throw new Error(`Failed to fetch records with queries: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to fetch records with queries', error);
     }
   }
 
@@ -194,7 +200,7 @@ export class EsDbClient extends EsDbClientBase {
         items: response.documents.map(doc => this.mapRecord(doc))
       };
     } catch (error) {
-      throw new Error(`Failed to search records: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to search records', error);
     }
   }
 
@@ -211,7 +217,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.users.create(EsID.unique(), emailAddress, undefined, credential, displayName);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to register account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to register account', error);
     }
   }
 
@@ -224,7 +230,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.users.get(accountId);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to fetch account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to fetch account', error);
     }
   }
 
@@ -253,7 +259,7 @@ export class EsDbClient extends EsDbClientBase {
       user = await this.users.get(accountId);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to modify account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to modify account', error);
     }
   }
 
@@ -266,7 +272,7 @@ export class EsDbClient extends EsDbClientBase {
       await this.users.delete(accountId);
       return true;
     } catch (error) {
-      throw new Error(`Failed to remove account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to remove account', error);
     }
   }
 
@@ -287,7 +293,7 @@ export class EsDbClient extends EsDbClientBase {
         items: response.users.map(user => this.mapAccount(user))
       };
     } catch (error) {
-      throw new Error(`Failed to fetch accounts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to fetch accounts', error);
     }
   }
 
@@ -328,7 +334,7 @@ export class EsDbClient extends EsDbClientBase {
         secret: token.secret
       };
     } catch (error) {
-      throw new Error(`Failed to create auth token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create auth token', error);
     }
   }
 
@@ -344,7 +350,7 @@ export class EsDbClient extends EsDbClientBase {
       const prefs = await this.users.getPrefs(accountId);
       return prefs as EsAccountPreferences;
     } catch (error) {
-      throw new Error(`Failed to get account preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to get account preferences', error);
     }
   }
 
@@ -359,7 +365,7 @@ export class EsDbClient extends EsDbClientBase {
       const updatedPrefs = await this.users.updatePrefs(accountId, prefs);
       return updatedPrefs as EsAccountPreferences;
     } catch (error) {
-      throw new Error(`Failed to update account preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update account preferences', error);
     }
   }
 
@@ -368,17 +374,19 @@ export class EsDbClient extends EsDbClientBase {
   async storeAsset(
     containerId: string,
     resource: File | Blob,
-    assetId?: string
+    assetId?: string,
+    permissions?: EsPermissionString[]
   ): Promise<EsAsset> {
     try {
       const uploadedFile = await this.storage.createFile(
         containerId,
         assetId || EsID.unique(),
-        resource as any
+        resource as any,
+        permissions
       );
       return this.mapAsset(uploadedFile);
     } catch (error) {
-      throw new Error(`Failed to store asset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to store asset', error);
     }
   }
 
@@ -387,7 +395,7 @@ export class EsDbClient extends EsDbClientBase {
       const file = await this.storage.getFile(containerId, assetId);
       return this.mapAsset(file);
     } catch (error) {
-      throw new Error(`Failed to fetch asset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to fetch asset', error);
     }
   }
 
@@ -404,7 +412,7 @@ export class EsDbClient extends EsDbClientBase {
       await this.storage.deleteFile(containerId, assetId);
       return true;
     } catch (error) {
-      throw new Error(`Failed to remove asset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to remove asset', error);
     }
   }
 
@@ -420,7 +428,156 @@ export class EsDbClient extends EsDbClientBase {
         items: response.files.map(file => this.mapAsset(file))
       };
     } catch (error) {
-      throw new Error(`Failed to fetch assets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to fetch assets', error);
+    }
+  }
+
+  /**
+   * Download a stored asset's content (Admin operation)
+   * @param containerId - Container (bucket) ID
+   * @param assetId - Asset (file) ID
+   * @returns The file's bytes
+   */
+  async fetchAssetContent(containerId: string, assetId: string): Promise<ArrayBuffer> {
+    try {
+      return await this.storage.getFileDownload(containerId, assetId);
+    } catch (error) {
+      throw esError('Failed to fetch asset content', error);
+    }
+  }
+
+  /**
+   * Replace the access rules of a stored asset (Admin operation)
+   * @param containerId - Container (bucket) ID
+   * @param assetId - Asset (file) ID
+   * @param permissions - New permission strings, e.g. EsPermission.read(EsRole.user(id))
+   */
+  async modifyAssetAccess(containerId: string, assetId: string, permissions: EsPermissionString[]): Promise<EsAsset> {
+    try {
+      const file = await this.storage.updateFile(containerId, assetId, undefined, permissions);
+      return this.mapAsset(file);
+    } catch (error) {
+      throw esError('Failed to modify asset access', error);
+    }
+  }
+
+  // ==================== SIGNED-IN USER FROM A JWT ====================
+
+  /**
+   * Resolve the account behind a short-lived JWT created in the browser
+   * (e.g. with the client's createJWT). Throws if the JWT is invalid or expired.
+   * The returned account includes its labels.
+   * @param jwt - JWT sent by the browser
+   */
+  async getAccountFromJWT(jwt: string): Promise<EsAccount> {
+    try {
+      const asUser = new Client()
+        .setEndpoint(this.config.endpoint || DEFAULT_PROVIDER_URL)
+        .setProject(this.config.projectId)
+        .setJWT(jwt);
+      const user = await new Account(asUser).get();
+      return this.mapAccount(user);
+    } catch (error) {
+      throw esError('Failed to get account from JWT', error);
+    }
+  }
+
+  // ==================== TEAM MEMBERSHIPS (Admin operations) ====================
+
+  /**
+   * List every team membership of an account
+   * @param accountId - Account ID
+   * @param queries - Optional query strings (EsQuery)
+   */
+  async fetchAccountMemberships(accountId: string, queries?: EsQueryString[]): Promise<EsMembershipSet> {
+    try {
+      const response = await this.users.listMemberships(accountId, queries);
+      return { count: response.total, items: response.memberships.map(m => this.mapMembership(m)) };
+    } catch (error) {
+      throw esError('Failed to fetch account memberships', error);
+    }
+  }
+
+  /**
+   * List the memberships of a team, including pending invitations
+   * @param teamId - Team ID
+   * @param queries - Optional query strings (EsQuery)
+   */
+  async fetchTeamMemberships(teamId: string, queries?: EsQueryString[]): Promise<EsMembershipSet> {
+    try {
+      const response = await this.teams.listMemberships(teamId, queries);
+      return { count: response.total, items: response.memberships.map(m => this.mapMembership(m)) };
+    } catch (error) {
+      throw esError('Failed to fetch team memberships', error);
+    }
+  }
+
+  /**
+   * Fetch one team membership
+   */
+  async fetchTeamMembership(teamId: string, membershipId: string): Promise<EsMembership> {
+    try {
+      return this.mapMembership(await this.teams.getMembership(teamId, membershipId));
+    } catch (error) {
+      throw esError('Failed to fetch team membership', error);
+    }
+  }
+
+  /**
+   * Replace the roles of a team membership
+   */
+  async modifyTeamMembership(teamId: string, membershipId: string, roles: string[]): Promise<EsMembership> {
+    try {
+      return this.mapMembership(await this.teams.updateMembership(teamId, membershipId, roles));
+    } catch (error) {
+      throw esError('Failed to modify team membership', error);
+    }
+  }
+
+  /**
+   * Remove a team membership (or cancel a pending invitation)
+   */
+  async removeTeamMembership(teamId: string, membershipId: string): Promise<boolean> {
+    try {
+      await this.teams.deleteMembership(teamId, membershipId);
+      return true;
+    } catch (error) {
+      throw esError('Failed to remove team membership', error);
+    }
+  }
+
+  /**
+   * Invite someone to a team by email, sent as an existing member (usually
+   * the team owner). Unlike an API-key invite, which adds the person
+   * straight away, this sends the normal invitation email with a join link.
+   * A short-lived session for `inviterAccountId` is created and removed again.
+   * @param inviterAccountId - Account the invitation is sent as (must be allowed to invite)
+   * @param teamId - Team ID
+   * @param email - Invitee email
+   * @param roles - Roles for the new membership
+   * @param url - Join page the invitation email links to
+   */
+  async inviteToTeamAs(
+    inviterAccountId: string,
+    teamId: string,
+    email: string,
+    roles: string[],
+    url: string
+  ): Promise<EsMembership> {
+    let sessionId: string | null = null;
+    try {
+      const session = await this.users.createSession(inviterAccountId);
+      sessionId = session.$id;
+      const asInviter = new Client()
+        .setEndpoint(this.config.endpoint || DEFAULT_PROVIDER_URL)
+        .setProject(this.config.projectId)
+        .setSession(session.secret);
+      const membership = await new Teams(asInviter).createMembership(teamId, roles, email, undefined, undefined, url);
+      return this.mapMembership(membership);
+    } catch (error) {
+      throw esError('Failed to invite to team', error);
+    } finally {
+      if (sessionId) await this.users.deleteSession(inviterAccountId, sessionId).catch(() => {});
     }
   }
 
@@ -441,7 +598,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.account.get();
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to get current account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to get current account', error);
     }
   }
 
@@ -453,7 +610,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.account.create(userId, email, password, name);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to create account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create account', error);
     }
   }
 
@@ -465,7 +622,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.account.updateEmail(email, password);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to update email: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update email', error);
     }
   }
 
@@ -477,7 +634,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.account.updateName(name);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to update name: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update name', error);
     }
   }
 
@@ -489,7 +646,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.account.updatePassword(password, oldPassword);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to update password: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update password', error);
     }
   }
 
@@ -501,7 +658,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.account.updatePhone(phone, password);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to update phone: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update phone', error);
     }
   }
 
@@ -513,7 +670,7 @@ export class EsDbClient extends EsDbClientBase {
       const prefs = await this.account.getPrefs();
       return prefs as EsAccountPreferences;
     } catch (error) {
-      throw new Error(`Failed to get preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to get preferences', error);
     }
   }
 
@@ -525,7 +682,7 @@ export class EsDbClient extends EsDbClientBase {
       const user = await this.account.updatePrefs(prefs);
       return this.mapAccount(user);
     } catch (error) {
-      throw new Error(`Failed to update preferences: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update preferences', error);
     }
   }
 
@@ -538,7 +695,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createEmailPasswordSession(email, password);
     } catch (error) {
-      throw new Error(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create session', error);
     }
   }
 
@@ -549,7 +706,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createAnonymousSession();
     } catch (error) {
-      throw new Error(`Failed to create anonymous session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create anonymous session', error);
     }
   }
 
@@ -560,7 +717,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createSession(userId, secret);
     } catch (error) {
-      throw new Error(`Failed to create session from token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create session from token', error);
     }
   }
 
@@ -571,7 +728,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.listSessions();
     } catch (error) {
-      throw new Error(`Failed to list sessions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to list sessions', error);
     }
   }
 
@@ -582,7 +739,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.getSession(sessionId);
     } catch (error) {
-      throw new Error(`Failed to get session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to get session', error);
     }
   }
 
@@ -593,7 +750,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.updateSession(sessionId);
     } catch (error) {
-      throw new Error(`Failed to update session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update session', error);
     }
   }
 
@@ -605,7 +762,7 @@ export class EsDbClient extends EsDbClientBase {
       await this.account.deleteSession(sessionId);
       return true;
     } catch (error) {
-      throw new Error(`Failed to delete session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to delete session', error);
     }
   }
 
@@ -617,7 +774,7 @@ export class EsDbClient extends EsDbClientBase {
       await this.account.deleteSessions();
       return true;
     } catch (error) {
-      throw new Error(`Failed to delete all sessions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to delete all sessions', error);
     }
   }
 
@@ -630,7 +787,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createMagicURLToken(userId, email, url, phrase);
     } catch (error) {
-      throw new Error(`Failed to create magic URL token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create magic URL token', error);
     }
   }
 
@@ -641,7 +798,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createEmailToken(userId, email, phrase);
     } catch (error) {
-      throw new Error(`Failed to create email token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create email token', error);
     }
   }
 
@@ -652,7 +809,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createPhoneToken(userId, phone);
     } catch (error) {
-      throw new Error(`Failed to create phone token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create phone token', error);
     }
   }
 
@@ -663,7 +820,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createJWT(duration);
     } catch (error) {
-      throw new Error(`Failed to create JWT: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create JWT', error);
     }
   }
 
@@ -676,7 +833,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createRecovery(email, url);
     } catch (error) {
-      throw new Error(`Failed to create recovery: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create recovery', error);
     }
   }
 
@@ -687,7 +844,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.updateRecovery(userId, secret, password);
     } catch (error) {
-      throw new Error(`Failed to update recovery: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update recovery', error);
     }
   }
 
@@ -700,7 +857,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createEmailVerification(url);
     } catch (error) {
-      throw new Error(`Failed to create email verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create email verification', error);
     }
   }
 
@@ -711,7 +868,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.updateEmailVerification(userId, secret);
     } catch (error) {
-      throw new Error(`Failed to update email verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update email verification', error);
     }
   }
 
@@ -722,7 +879,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.createPhoneVerification();
     } catch (error) {
-      throw new Error(`Failed to create phone verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to create phone verification', error);
     }
   }
 
@@ -733,7 +890,7 @@ export class EsDbClient extends EsDbClientBase {
     try {
       return await this.account.updatePhoneVerification(userId, secret);
     } catch (error) {
-      throw new Error(`Failed to update phone verification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw esError('Failed to update phone verification', error);
     }
   }
 

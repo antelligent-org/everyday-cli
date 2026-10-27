@@ -10,11 +10,27 @@ import type {
   EsAccountSet,
   EsAsset,
   EsAssetSet,
-  EsQueryConfig
+  EsQueryConfig,
+  EsMembership
 } from '../types';
 import type { EsPermissionString, EsQueryString } from '../helpers';
 
 export const DEFAULT_PROVIDER_URL = 'https://provider.everydayseries.ai/v1';
+
+/**
+ * Wraps a provider error with a readable message while keeping the provider's
+ * `code` (HTTP status, e.g. 404 or 409) and `type`, so callers can still tell
+ * "not found" from "already exists".
+ */
+export function esError(message: string, error: unknown): Error & { code?: number; type?: string } {
+  const wrapped: Error & { code?: number; type?: string } = new Error(
+    `${message}: ${error instanceof Error ? error.message : 'Unknown error'}`
+  );
+  const source = error as { code?: unknown; type?: unknown } | null;
+  if (source && typeof source.code === 'number') wrapped.code = source.code;
+  if (source && typeof source.type === 'string') wrapped.type = source.type;
+  return wrapped;
+}
 
 /**
  * Base configuration for EsDbClient
@@ -115,7 +131,8 @@ export abstract class EsDbClientBase {
   abstract storeAsset(
     containerId: string,
     resource: File | Blob,
-    assetId?: string
+    assetId?: string,
+    permissions?: EsPermissionString[]
   ): Promise<EsAsset>;
 
   /**
@@ -176,7 +193,27 @@ export abstract class EsDbClientBase {
       emailConfirmed: user.emailVerification,
       phoneConfirmed: user.phoneVerification,
       createdAt: user.$createdAt,
-      modifiedAt: user.$updatedAt
+      modifiedAt: user.$updatedAt,
+      labels: Array.isArray(user.labels) ? user.labels : []
+    };
+  }
+
+  /**
+   * Map Appwrite team membership to EsMembership
+   */
+  protected mapMembership(membership: any): EsMembership {
+    return {
+      uid: membership.$id,
+      userId: membership.userId,
+      userName: membership.userName,
+      userEmail: membership.userEmail,
+      teamId: membership.teamId,
+      teamName: membership.teamName,
+      roles: membership.roles || [],
+      createdAt: membership.$createdAt,
+      invited: membership.invited,
+      joined: membership.joined,
+      confirm: membership.confirm
     };
   }
 

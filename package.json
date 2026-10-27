@@ -1,6 +1,6 @@
 {
   "name": "@antelligent-app/everyday-cli",
-  "version": "2.0.7",
+  "version": "2.1.0",
   "description": "TypeScript client and CLI for EverydaySeries API with server-side Account service, realtime subscriptions, preferences management, Magic URL auth, and dual environment support (Node.js & browser).",
   "type": "module",
   "main": "dist/index.js",

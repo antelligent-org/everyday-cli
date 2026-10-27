@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-10-20
+
+### Added
+
+- **Server: signed-in user from a JWT** - `getAccountFromJWT(jwt)` resolves the account behind a JWT created in the browser, so API routes can identify the caller without importing `node-appwrite`.
+- **Server: team memberships** - `fetchAccountMemberships`, `fetchTeamMemberships`, `fetchTeamMembership`, `modifyTeamMembership`, `removeTeamMembership`, and `inviteToTeamAs` (sends the normal invitation email as an existing member, using a short-lived session that is removed again).
+- **Asset permissions** - `storeAsset(containerId, resource, assetId?, permissions?)` accepts permissions on both clients; the server adds `modifyAssetAccess(containerId, assetId, permissions)`.
+- **Server: asset content** - `fetchAssetContent(containerId, assetId)` returns a stored file's bytes, for serving private files through an API route.
+- `EsAccount.labels` (e.g. `["admin"]`) and `EsMembership.invited` / `joined` / `confirm`.
+- `EsMembership` and `EsMembershipSet` are exported from the server entry point.
+
+### Changed
+
+- Errors thrown by both clients keep the provider's `code` (e.g. 404, 409) and `type`. Messages are unchanged.
+
 ## [2.0.7] - 2026-08-03
 
 ### 🐛 Fixed
