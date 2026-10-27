@@ -2,6 +2,25 @@ export interface EsClientConfig {
   apiKey: string;
   slug: string;
   baseUrl?: string;
+  /** How long run() waits for the server, in ms. Default 120000. */
+  timeoutMs?: number;
+}
+
+/** A flow (series) as the team's flow list returns it. */
+export interface FlowSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+  slug?: string | null;
+  status?: string | null;
+  [key: string]: any;
+}
+
+export interface RunOptions {
+  /** Overrides the client's timeoutMs for this call. */
+  timeoutMs?: number;
+  /** Cancels the request. */
+  signal?: AbortSignal;
 }
 
 export interface FlowValue {
@@ -215,9 +234,17 @@ export interface FlowResponse {
 }
 
 export interface RunFlowResult {
+  /** True only when the run reached the end. */
   success: boolean;
+  /** False when the run stopped at an approval or a failed step. */
+  complete?: boolean;
+  /** The run's history id, to look it up or approve its waiting step. */
+  hisId?: string;
+  /** The HTTP status when the server refused the request. */
+  status?: number;
   nodes: FlowNode[];
   data?: FlowNode['data'][];
+  /** The server's reason, or why the run stopped. */
   error?: string;
 }
 
